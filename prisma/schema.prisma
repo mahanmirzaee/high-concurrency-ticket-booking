@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// وضعیت‌های رزرو
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+// وضعیت فیزیکی صندلی
+enum SeatType {
+  STANDARD
+  VIP
+}
+
+// ۱. مدل کاربر (پایه احراز هویت)
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String // رمز عبور هش‌شده
+  fullName  String
+  createdAt DateTime  @default(now())
+  bookings  Booking[]
+
+  @@map("users")
+}
+
+// ۲. مدل فیلم یا رویداد
+model Event {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  durationMin Int
+  showtimes   Showtime[]
+
+  @@map("events")
+}
+
+// ۳. سانس پخش
+model Showtime {
+  id        String    @id @default(uuid())
+  startTime DateTime
+  price     Float
+  eventId   String
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  seats     Seat[]
+  bookings  Booking[]
+
+  @@map("showtimes")
+}
+
+// ۴. صندلی‌های تعریف‌شده برای هر سانس
+model Seat {
+  id         String    @id @default(uuid())
+  seatNumber String // مثلاً A1, A2
+  type       SeatType  @default(STANDARD)
+  showtimeId String
+  showtime   Showtime  @relation(fields: [showtimeId], references: [id], onDelete: Cascade)
+  bookings   Booking[]
+
+  // هر صندلی در یک سانس فقط می‌تواند یک بار تعریف شود
+  @@unique([showtimeId, seatNumber])
+  @@map("seats")
+}
+
+// ۵.  ثبت رزرو نهایی
+model Booking {
+  id         String        @id @default(uuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id])
+  showtimeId String
+  showtime   Showtime      @relation(fields: [showtimeId], references: [id])
+  seatId     String
+  seat       Seat          @relation(fields: [seatId], references: [id])
+  status     BookingStatus @default(PENDING)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@map("bookings")
+}
